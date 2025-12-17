@@ -46,6 +46,17 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
+resource "aws_eip" "nat" {
+  count  = length(var.public_subnet_cidr)
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.cluster_name}-eip-${count.index + 1}"
+  }
+
+  depends_on = [aws_internet_gateway.main]
+}
+
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
