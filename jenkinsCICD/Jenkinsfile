@@ -1,0 +1,184 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVICE_NAME = 'recommendation'
+        SERVICE_PATH = 'src/recommendation'
+        DOCKER_REGISTRY = credentials('docker-registry-url')
+        DOCKER_USERNAME = credentials('docker-username')
+        DOCKER_PASSWORD = credentials('docker-password')
+        DOCKER_IMAGE = "${DOCKER_USERNAME}/${SERVICE_NAME}"
+        BUILD_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
+        K8S_MANIFEST_PATH = 'kubernetes/recommendation/deploy.yaml'
+        GIT_AUTHOR_EMAIL = 'jenkins@example.com'
+        GIT_AUTHOR_NAME = 'Jenkins CI'
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.GIT_COMMIT_MSG = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                dir("${SERVICE_PATH}") {
+                    script {
+                        sh '''
+                            echo "Installing dependencies..."
+                            pip install --upgrade pip
+                            pip install -r requirements.txt
+                            pip install pytest pytest-cov
+
+                            echo "Running unit tests..."
+                            pytest --cov=. --cov-report=xml --cov-report=html || exit 1
+                        '''
+                    }
+                }
+            }
+            post {
+                always {
+                    junit testResults: "${SERVICE_PATH}/test-results.xml", allowEmptyResults: true
+                    publishHTML([
+                        reportDir: "${SERVICE_PATH}/htmlcov",
+                        reportFiles: 'index.html',
+                        reportName: 'Coverage Report'
+                    ])
+                }
+            }
+        }
+
+        stage('Code Quality - Linting') {
+            steps {
+                dir("${SERVICE_PATH}") {
+                    script {
+                        sh '''
+                            echo "Installing linting tools..."
+                            pip install pylint flake8 black isort
+
+                            echo "Running pylint..."
+                            pylint *.py --exit-zero --output-format=parseable > pylint-report.txt || true
+
+                            echo "Running flake8..."
+                            flake8 *.py --format=json > flake8-report.json || true
+
+                            echo "Checking code formatting with black..."
+                            black --check *.py || true
+
+                            echo "Checking import sorting with isort..."
+                            isort --check-only *.py || true
+                        '''
+                    }
+                }
+            }
+            post {
+                always {
+                    recordIssues(
+                        enabledForFailure: true,
+                        tools: [
+                            pyLint(pattern: "${SERVICE_PATH}/pylint-report.txt"),
+                            flake8(pattern: "${SERVICE_PATH}/flake8-report.json")
+                        ]
+                    )
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh '''
+                        echo "Building Docker image: ${DOCKER_IMAGE}:${BUILD_TAG}"
+                        docker build -t ${DOCKER_IMAGE}:${BUILD_TAG} \
+                                     -t ${DOCKER_IMAGE}:latest \
+                                     -f ${SERVICE_PATH}/Dockerfile \
+                                     ${SERVICE_PATH}
+                    '''
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    sh '''
+                        echo "Logging into Docker registry..."
+                        echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+
+                        echo "Pushing Docker image..."
+                        docker push ${DOCKER_IMAGE}:${BUILD_TAG}
+                        docker push ${DOCKER_IMAGE}:latest
+
+                        echo "Image pushed successfully: ${DOCKER_IMAGE}:${BUILD_TAG}"
+                    '''
+                }
+            }
+            post {
+                always {
+                    sh 'docker logout || true'
+                }
+            }
+        }
+
+        stage('Update Kubernetes Manifest') {
+            steps {
+                script {
+                    sh '''
+                        echo "Updating Kubernetes manifest with new image tag..."
+                        
+                        # Update the image tag in the deployment manifest
+                        sed -i "s|image: .*${SERVICE_NAME}.*|image: ${DOCKER_IMAGE}:${BUILD_TAG}|g" ${K8S_MANIFEST_PATH}
+                        
+                        # Verify the change
+                        echo "Updated manifest:"
+                        grep -A 2 "image:" ${K8S_MANIFEST_PATH} | head -5
+                    '''
+                }
+            }
+        }
+
+        stage('Commit and Push Changes') {
+            steps {
+                script {
+                    sh '''
+                        echo "Configuring git..."
+                        git config user.email "${GIT_AUTHOR_EMAIL}"
+                        git config user.name "${GIT_AUTHOR_NAME}"
+
+                        echo "Staging changes..."
+                        git add ${K8S_MANIFEST_PATH}
+
+                        echo "Committing changes..."
+                        git commit -m "[CI/CD] Update ${SERVICE_NAME} image to ${BUILD_TAG}" || echo "No changes to commit"
+
+                        echo "Pushing changes to main branch..."
+                        git push origin HEAD:main || echo "Push failed, may need manual intervention"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✓ Pipeline completed successfully!"
+            echo "Image: ${DOCKER_IMAGE}:${BUILD_TAG}"
+        }
+        failure {
+            echo "✗ Pipeline failed. Check logs above for details."
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
