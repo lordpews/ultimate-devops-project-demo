@@ -56,3 +56,49 @@ test/tracetesting/tracetesting-vars.yaml
 !src/currency/build
 /infra/.*
 .gitignore
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+**/*.tfvars.json
+**/crash.log
+**/crash.*.log
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/terraform.rc
+**/terraform.tfrc
+**/.terraformrc
+
+# Terraform Cloud
+**/terraform.cloud
+**/terraform.tfcloud
+
+# Jenkins
+**/jenkins-backup.tar.gz
+**/jenkins-backup/
+**/.jenkins/
+**/jenkins_home/
+
+# Local environment files
+**/.env.local
+**/.env.*.local
+**/local.env
+
+# IDE and Editor
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+**/.*~
+**/.DS_Store
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
