@@ -10,7 +10,6 @@ pipeline {
         BUILD_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
         K8S_MANIFEST_PATH = 'kubernetes/recommendation/deploy.yaml'
         GIT_CREDENTIALS = credentials('jenkins_creds')
-        GIT_AUTHOR_NAME = 'Jenkins CI'
     }
 
     options {
@@ -144,7 +143,7 @@ pipeline {
                     sh '''
                         echo "Configuring git..."
                         git config user.email "${GIT_CREDENTIALS_USR}"
-                        git config user.name "${GIT_AUTHOR_NAME}"
+                        git config user.name "lordpews"
 
                         echo "Staging changes..."
                         git add ${K8S_MANIFEST_PATH}
@@ -153,7 +152,7 @@ pipeline {
                         git commit -m "[CI/CD] Update ${SERVICE_NAME} image to ${BUILD_TAG}" || echo "No changes to commit"
 
                         echo "Pushing changes to main branch..."
-                        git push https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@github.com/lordpews/ultimate-devops-project-demo.git HEAD:main || echo "Push failed, may need manual intervention"
+                        git push https://lordpews:${GIT_CREDENTIALS_PSW}@github.com/lordpews/ultimate-devops-project-demo.git HEAD:main || echo "Push failed, may need manual intervention"
                     '''
                 }
             }
