@@ -4,9 +4,8 @@ pipeline {
     environment {
         SERVICE_NAME = 'recommendation'
         SERVICE_PATH = 'src/recommendation'
-        DOCKER_USERNAME = credentials('docker-username')
-        DOCKER_PASSWORD = credentials('docker-password')
-        DOCKER_IMAGE = "${DOCKER_USERNAME}/${SERVICE_NAME}"
+        DOCKER_CREDENTIALS = credentials('docker-password')
+        DOCKER_IMAGE = "lordpews/recommendation"
         BUILD_TAG = "${BUILD_NUMBER}-${GIT_COMMIT.take(7)}"
         K8S_MANIFEST_PATH = 'kubernetes/recommendation/deploy.yaml'
         GIT_AUTHOR_EMAIL = 'jenkins@example.com'
@@ -103,7 +102,7 @@ pipeline {
                 script {
                     sh '''
                         echo "Logging into Docker registry..."
-                        echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+                        echo "${DOCKER_CREDENTIALS_PSW}" | docker login -u "${DOCKER_CREDENTIALS_USR}" --password-stdin
 
                         echo "Pushing Docker image..."
                         docker push ${DOCKER_IMAGE}:${BUILD_TAG}
