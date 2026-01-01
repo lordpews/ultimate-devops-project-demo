@@ -103,7 +103,7 @@ pipeline {
                 script {
                     sh '''
                         echo "Logging into Docker registry..."
-                        echo "REDACTED" | docker login -u "${DOCKER_CREDENTIALS_USR}" --password-stdin
+                        echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_PASSWORD}" --password-stdin
 
                         echo "Pushing Docker image..."
                         docker push ${DOCKER_IMAGE}:${BUILD_TAG}
