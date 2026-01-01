@@ -113,11 +113,11 @@ def get_product_list(request_product_ids):
         return prod_list
 
 
-def must_map_env(key: str):
-    value = os.environ.get(key)
-    if value is None:
-        raise Exception(f'{key} environment variable must be set')
-    return value
+# def must_map_env(key: str):
+#     value = os.environ.get(key)
+#     if value is None:
+#         raise Exception(f'{key} environment variable must be set')
+#     return value
 
 
 def check_feature_flag(flag_name: str):
@@ -153,7 +153,8 @@ if __name__ == "__main__":
     logger = logging.getLogger('main')
     logger.addHandler(handler)
 
-    catalog_addr = must_map_env('PRODUCT_CATALOG_ADDR')
+    # catalog_addr = must_map_env('PRODUCT_CATALOG_ADDR')
+    catalog_addr = "172.20.159.124"
     pc_channel = grpc.insecure_channel(catalog_addr)
     product_catalog_stub = demo_pb2_grpc.ProductCatalogServiceStub(pc_channel)
 
