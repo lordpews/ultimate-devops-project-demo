@@ -127,7 +127,8 @@ def check_feature_flag(flag_name: str):
 
 
 if __name__ == "__main__":
-    service_name = must_map_env('OTEL_SERVICE_NAME')
+    # service_name = must_map_env('OTEL_SERVICE_NAME')
+    service_name = "recommendation"
     api.set_provider(FlagdProvider(host=os.environ.get('FLAGD_HOST', 'flagd'), port=os.environ.get('FLAGD_PORT', 8013)))
     api.add_hooks([TracingHook()])
 
@@ -167,7 +168,8 @@ if __name__ == "__main__":
     health_pb2_grpc.add_HealthServicer_to_server(service, server)
 
     # Start server
-    port = must_map_env('RECOMMENDATION_PORT')
+    # port = must_map_env('RECOMMENDATION_PORT')
+    port = "1010"
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     logger.info(f'Recommendation service started, listening on port {port}')
